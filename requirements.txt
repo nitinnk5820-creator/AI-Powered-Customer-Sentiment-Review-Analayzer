@@ -4,3 +4,4 @@ textblob
 plotly
 wordcloud
 matplotlib
+pypdf
