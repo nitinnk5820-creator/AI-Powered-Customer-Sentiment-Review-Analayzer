@@ -1,141 +1,162 @@
-import streamlit as st
+import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
+import streamlit as st
+from textblob import TextBlob
 from wordcloud import WordCloud
-import matplotlib.pyplot as plt
-from utils import analyze_sentiment
 
 # Page Configuration
 st.set_page_config(
-    page_title="AI Sentiment Analyzer Pro",
-    page_icon="🚀",
-    layout="wide"
+    page_title="AI Sentiment Analyzer Pro", page_icon="🚀", layout="wide"
 )
 
-# Custom CSS for Professional Look
-st.markdown("""
-    <style>
-    .main {
-        background-color: #f8f9fa;
-    }
-    .stButton>button {
-        width: 100%;
-        background-color: #ff4b4b;
-        color: white;
-        border-radius: 5px;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# Sidebar Configuration
-st.sidebar.title("🎛️ Navigation & Info")
-app_mode = st.sidebar.selectbox(
-    "Choose Analysis Mode",
-    ["Single Review Analysis", "Bulk Review & Market Analytics"]
+# Sidebar Navigation & Info
+st.sidebar.title("Navigation & Info")
+analysis_mode = st.sidebar.selectbox(
+    "Choose Analysis Mode", ["Single Review Analysis", "Bulk Review & Market Hub"]
 )
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 👨‍💻 Project Info")
-st.sidebar.info(
-    "**Developer:** Nitin Kumar\r\n"
-    "**Enrollment No.:** 20241697\r\n"
-    "**Course:** B.Tech CSE (3rd Year)\r\n"
-    "**Tech Stack:** Python, Streamlit, Plotly, NLP"
+st.sidebar.markdown("### 📌 Project Info")
+st.sidebar.markdown("**Developer:** Nitin Kumar")
+st.sidebar.markdown("**Enrollment No.:** 20241697")
+st.sidebar.markdown("**Course:** B.Tech CSE (3rd Year)")
+st.sidebar.markdown(
+    "**Tech Stack:** Python, Streamlit, Plotly, TextBlob, WordCloud, NLP"
 )
 
-# Main Title Area
-st.title("🚀 AI-Powered Customer Sentiment & Market Intelligence Hub")
-st.markdown("An enterprise-grade sentiment analytics dashboard designed for automated feedback processing, polarity visualization, and actionable business insights.")
-st.markdown("---")
 
-if app_mode == "Single Review Analysis":
-    st.subheader("📝 Single Customer Review Evaluation")
-    review_text = st.text_area("Enter or paste customer review text below:")
-    
-    if st.button("Analyze Sentiment"):
-        if review_text.strip() != "":
-            sentiment, polarity, subjectivity = analyze_sentiment(review_text)
-            
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Sentiment", sentiment)
-            col2.metric("Polarity Score", f"{polarity:.2f}")
-            col3.metric("Subjectivity Score", f"{subjectivity:.2f}")
-            
-            if sentiment == "Positive":
-                st.success("The analyzed sentiment is predominantly positive and indicates strong consumer satisfaction.")
-            elif sentiment == "Negative":
-                st.error("The analyzed sentiment is predominantly negative and highlights critical areas for improvement.")
-            else:
-                st.warning("The analyzed sentiment is neutral, reflecting moderate or mixed user feedback.")
-        else:
-            st.warning("Please enter some text to analyze.")
+# Helper function for sentiment analysis
+def analyze_sentiment(text):
+  analysis = TextBlob(text)
+  polarity = analysis.sentiment.polarity
+  if polarity > 0.1:
+    sentiment = "Positive"
+  elif polarity < -0.1:
+    sentiment = "Negative"
+  else:
+    sentiment = "Neutral"
+  return polarity, sentiment
 
-elif app_mode == "Bulk Review & Market Analytics":
-    st.subheader("📊 Bulk Review Analytics & Export Suite")
-    uploaded_file = st.file_uploader("Upload customer feedback CSV file", type=["csv"])
-    
-    if uploaded_file is not None:
-        df = pd.read_csv(uploaded_file)
-        st.write("### Dataset Preview", df.head())
-        
-        text_column = st.selectbox("Select the column containing review texts:", df.columns)
-        
-        if st.button("Run Advanced Market Analysis"):
-            sentiments = []
-            polarities = []
-            
-            for text in df[text_column]:
-                if pd.isna(text):
-                    sentiments.append("Neutral")
-                    polarities.append(0.0)
-                else:
-                    sent, pol, _ = analyze_sentiment(str(text))
-                    sentiments.append(sent)
-                    polarities.append(pol)
-                    
-            df['Sentiment'] = sentiments
-            df['Polarity'] = polarities
-            
-            st.write("### Processed Results Matrix", df.head())
-            
-            # Sentiment Count Breakdown
-            sentiment_counts = df['Sentiment'].value_counts().reset_index()
-            sentiment_counts.columns = ['Sentiment', 'Count']
-            
-            # Interactive Plotly Bar Chart
-            fig = px.bar(
-                sentiment_counts, 
-                x='Sentiment', 
-                y='Count', 
-                color='Sentiment',
-                title='Market Sentiment Distribution Matrix',
-                color_discrete_map={'Positive': '#2ecc71', 'Negative': '#e74c3c', 'Neutral': '#3498db'}
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Enterprise Download CSV Button
-            csv_data = df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Download Analyzed Report as CSV",
-                data=csv_data,
-                file_name="market_sentiment_report.csv",
-                mime="text/csv",
-            )
-            
-            # Robust Word Cloud Generation
-            st.subheader("☁️ Market Keyword Frequency Cloud")
-            try:
-                valid_texts = [str(t) for t in df[text_column] if pd.notna(t) and str(t).strip() != ""]
-                text_data = " ".join(valid_texts)
-                
-                if len(text_data.strip()) > 0:
-                    wordcloud = WordCloud(width=900, height=450, background_color='white', colormap='plasma').generate(text_data)
-                    
-                    fig_wc, ax = plt.subplots(figsize=(10, 5))
-                    ax.imshow(wordcloud, interpolation='bilinear')
-                    ax.axis('off')
-                    st.pyplot(fig_wc)
-                else:
-                    st.warning("No valid text data available in the selected column for word cloud generation.")
-            except Exception as e:
-                st.info("Word cloud generation could not be completed.")
+
+# Mode 1: Single Review Analysis
+if analysis_mode == "Single Review Analysis":
+  st.title("🚀 AI-Powered Customer Sentiment & Market Intelligence Hub")
+  st.markdown(
+      "An enterprise-grade sentiment analytics dashboard designed for automated"
+      " feedback processing, polarity visualization, and actionable business"
+      " insights."
+  )
+  st.markdown("---")
+
+  st.subheader("Single Customer Review Evaluation")
+  review_text = st.text_area(
+      "Enter or paste customer review text below",
+      placeholder="Type your review here...",
+  )
+
+  if st.button("Analyze Sentiment"):
+    if review_text.strip() != "":
+      polarity, sentiment = analyze_sentiment(review_text)
+
+      col1, col2, col3 = st.columns(3)
+      col1.metric("Sentiment", sentiment)
+      col2.metric("Polarity Score", f"{polarity:.2f}")
+      col3.metric("Confidence", "High")
+
+      if sentiment == "Positive":
+        st.success("✅ The customer review is predominantly Positive!")
+      elif sentiment == "Negative":
+        st.error("❌ The customer review indicates Negative sentiment.")
+      else:
+        st.warning("⚠️ The customer review is Neutral.")
+    else:
+        st.error("Please enter some review text before analyzing.")
+
+# Mode 2: Bulk Review & Market Hub
+else:
+  st.title("🚀 AI-Powered Customer Sentiment & Market Intelligence Hub")
+  st.markdown("---")
+
+  st.subheader("📊 Bulk Review Analytics & Export Suite")
+  st.markdown(
+      "Upload a customer feedback CSV file or paste CSV content below for"
+      " batch processing."
+  )
+
+  # File uploader without strict type restriction for mobile friendliness
+  uploaded_file = st.file_uploader(
+      "Upload customer feedback CSV file (Columns required: review, sentiment"
+      " or text)"
+  )
+
+  df = None
+
+  # Mobile Fallback: Direct CSV Text Area input if file uploader behaves up
+  if uploaded_file is not None:
+    try:
+      df = pd.read_csv(uploaded_file)
+    except Exception as e:
+      st.error(f"Error reading file: {e}")
+  else:
+    st.info(
+        "💡 **Mobile Tip:** Agar phone mein file uploader gallery khol raha"
+        " hai, toh aap apne CSV ka data yahan niche paste kar sakte hain!"
+    )
+    csv_paste = st.text_area(
+        "Or paste CSV rows here (Format: review,rating)",
+        placeholder=(
+            "review,rating\nGreat product and fast delivery!,5\nWorst quality"
+            " ever.,1"
+        ),
+    )
+    if csv_paste.strip() != "":
+      import io
+
+      try:
+        df = pd.read_csv(io.StringIO(csv_paste))
+      except Exception as e:
+        st.error(f"Invalid CSV format in text area: {e}")
+
+  if df is not None:
+    st.success("Data successfully loaded!")
+    st.dataframe(df.head())
+
+    # Check for text column
+    text_col = None
+    for col in df.columns:
+      if (
+          "review" in col.lower()
+          or "text" in col.lower()
+          or "comment" in col.lower()
+      ):
+        text_col = col
+        break
+
+    if text_col:
+      st.info(f"Analyzing sentiments using column: **{text_col}**")
+      polarities = []
+      sentiments = []
+      for text in df[text_col].astype(str):
+        p, s = analyze_sentiment(text)
+        polarities.append(p)
+        sentiments.append(s)
+
+      df["Polarity"] = polarities
+      df["Sentiment"] = sentiments
+
+      # Display metrics & charts
+      st.subheader("Sentiment Distribution Summary")
+      sentiment_counts = df["Sentiment"].value_counts()
+      fig = px.pie(
+          names=sentiment_counts.index,
+          values=sentiment_counts.values,
+          title="Customer Sentiment Breakdown",
+          hole=0.4,
+      )
+      st.plotly_chart(fig, use_container_width=True)
+    else:
+      st.warning(
+          "Could not find a review/text column in the uploaded dataset. Please"
+          " ensure your CSV has a column named 'review' or 'text'."
+      )
