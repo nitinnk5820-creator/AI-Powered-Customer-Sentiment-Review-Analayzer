@@ -1,5 +1,7 @@
+import io
 import matplotlib.pyplot as plt
 import pandas as pd
+import pypdf
 import plotly.express as px
 import streamlit as st
 from textblob import TextBlob
@@ -71,7 +73,7 @@ if analysis_mode == "Single Review Analysis":
       else:
         st.warning("⚠️ The customer review is Neutral.")
     else:
-        st.error("Please enter some review text before analyzing.")
+      st.error("Please enter some review text before analyzing.")
 
 # Mode 2: Bulk Review & Market Hub
 else:
@@ -80,46 +82,65 @@ else:
 
   st.subheader("📊 Bulk Review Analytics & Export Suite")
   st.markdown(
-      "Upload a customer feedback CSV file or paste CSV content below for"
-      " batch processing."
+      "Upload customer feedback data via **CSV** or **PDF** document for"
+      " automated batch processing."
   )
 
-  # File uploader without strict type restriction for mobile friendliness
+  # File uploader supporting both CSV and PDF formats
   uploaded_file = st.file_uploader(
-      "Upload customer feedback CSV file (Columns required: review, sentiment"
-      " or text)"
+      "Upload document (Accepted formats: CSV, PDF)", type=["csv", "pdf"]
   )
 
   df = None
 
-  # Mobile Fallback: Direct CSV Text Area input if file uploader behaves up
   if uploaded_file is not None:
+    file_extension = uploaded_file.name.split(".")[-1].lower()
+
     try:
-      df = pd.read_csv(uploaded_file)
+      if file_extension == "csv":
+        df = pd.read_csv(uploaded_file)
+      elif file_extension == "pdf":
+        # Extracting text line by line from PDF
+        reader = pypdf.PdfReader(uploaded_file)
+        text_lines = []
+        for page in reader.pages:
+          extracted = page.extract_text()
+          if extracted:
+            for line in extracted.split("\n"):
+              if line.strip():
+                text_lines.append(line.strip())
+
+        # Creating a dataframe from PDF extracted text lines
+        df = pd.DataFrame(text_lines, columns=["review"])
+        st.info(
+            f"📄 Extracted {len(text_lines)} lines of text successfully from"
+            " the uploaded PDF."
+        )
     except Exception as e:
-      st.error(f"Error reading file: {e}")
+      st.error(f"Error processing file: {e}")
   else:
-    st.info(
-        "💡 **Mobile Tip:** Agar phone mein file uploader gallery khol raha"
-        " hai, toh aap apne CSV ka data yahan niche paste kar sakte hain!"
+    # Professional alternative text/input section instead of casual mobile tip
+    st.markdown("---")
+    st.markdown(
+        "### 💡 Alternative Data Input Method\nIf you prefer manual entry or"
+        " are testing via mobile, you can paste your review dataset rows"
+        " directly below:"
     )
     csv_paste = st.text_area(
-        "Or paste CSV rows here (Format: review,rating)",
+        "Paste comma-separated review rows (Format: review,rating)",
         placeholder=(
             "review,rating\nGreat product and fast delivery!,5\nWorst quality"
             " ever.,1"
         ),
     )
     if csv_paste.strip() != "":
-      import io
-
       try:
         df = pd.read_csv(io.StringIO(csv_paste))
       except Exception as e:
-        st.error(f"Invalid CSV format in text area: {e}")
+        st.error(f"Invalid format in text area: {e}")
 
   if df is not None:
-    st.success("Data successfully loaded!")
+    st.success("Data successfully loaded and ready for analysis!")
     st.dataframe(df.head())
 
     # Check for text column
@@ -133,8 +154,12 @@ else:
         text_col = col
         break
 
+    # If no specific text column found (like in PDF extraction), use the first available column
+    if not text_col and len(df.columns) > 0:
+      text_col = df.columns[0]
+
     if text_col:
-      st.info(f"Analyzing sentiments using column: **{text_col}**")
+      st.info(f"Analyzing sentiments using target column: **{text_col}**")
       polarities = []
       sentiments = []
       for text in df[text_col].astype(str):
@@ -157,6 +182,5 @@ else:
       st.plotly_chart(fig, use_container_width=True)
     else:
       st.warning(
-          "Could not find a review/text column in the uploaded dataset. Please"
-          " ensure your CSV has a column named 'review' or 'text'."
+          "Could not detect a valid text column for sentiment evaluation."
       )
