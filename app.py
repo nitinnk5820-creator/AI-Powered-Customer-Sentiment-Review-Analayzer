@@ -1,8 +1,8 @@
 import io
 import matplotlib.pyplot as plt
 import pandas as pd
-import pypdf
 import plotly.express as px
+import pypdf
 import streamlit as st
 from textblob import TextBlob
 from wordcloud import WordCloud
@@ -100,26 +100,25 @@ else:
       if file_extension == "csv":
         df = pd.read_csv(uploaded_file)
       elif file_extension == "pdf":
-        # Extracting text line by line from PDF
         reader = pypdf.PdfReader(uploaded_file)
         text_lines = []
         for page in reader.pages:
           extracted = page.extract_text()
           if extracted:
             for line in extracted.split("\n"):
-              if line.strip():
-                text_lines.append(line.strip())
+              clean_line = line.strip()
+              # Filter out single characters or tiny lines so only actual sentences/reviews remain
+              if len(clean_line) > 3:
+                text_lines.append(clean_line)
 
-        # Creating a dataframe from PDF extracted text lines
         df = pd.DataFrame(text_lines, columns=["review"])
         st.info(
-            f"📄 Extracted {len(text_lines)} lines of text successfully from"
-            " the uploaded PDF."
+            f"📄 Extracted {len(text_lines)} valid review lines successfully"
+            " from the uploaded PDF."
         )
     except Exception as e:
       st.error(f"Error processing file: {e}")
   else:
-    # Professional alternative text/input section instead of casual mobile tip
     st.markdown("---")
     st.markdown(
         "### 💡 Alternative Data Input Method\nIf you prefer manual entry or"
@@ -154,7 +153,6 @@ else:
         text_col = col
         break
 
-    # If no specific text column found (like in PDF extraction), use the first available column
     if not text_col and len(df.columns) > 0:
       text_col = df.columns[0]
 
